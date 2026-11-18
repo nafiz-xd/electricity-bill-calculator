@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electricity Bill Calculator — Bangladesh (DESCO / DPDC / BERC Tariff)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:#131007; color:#fef3c7; min-height:100vh; padding:26px 14px 60px; }
+  .wrap { max-width:780px; margin:0 auto; }
+  h1 { text-align:center; font-size:28px; }
+  h1 span { color:#fbbf24; }
+  .sub { text-align:center; color:#d6c48a; margin:8px 0 20px; font-size:14.5px; }
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:18px; }
+  .tab { padding:10px 16px; border-radius:999px; border:1px solid #574410; background:#1f1a08; color:#e7d28a; cursor:pointer; font-weight:700; font-size:14px; }
+  .tab.active { background:#fbbf24; color:#231a00; border-color:#fbbf24; }
+  .card { background:#1f1a08; border:1px solid #574410; border-radius:14px; padding:20px; margin-bottom:16px; }
+  .card h3 { margin-bottom:12px; font-size:17px; color:#fde68a; }
+  label { display:block; font-size:13px; color:#d6c48a; margin:10px 0 5px; }
+  input, select { width:100%; background:#131007; border:1px solid #574410; color:#fef3c7; border-radius:8px; padding:10px; font-size:15px; }
+  input:focus, select:focus { outline:2px solid #fbbf24; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  button.main { width:100%; margin-top:14px; padding:12px; background:#fbbf24; color:#231a00; border:none; border-radius:10px; font-weight:800; font-size:15.5px; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { padding:7px 6px; border-bottom:1px solid #3d320e; text-align:right; }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:#d6c48a; font-size:12.5px; }
+  .total-row td { border-top:2px solid #fbbf24; border-bottom:none; font-weight:800; font-size:16px; color:#fde68a; }
+  .big { text-align:center; font-size:40px; font-weight:800; color:#fbbf24; margin:8px 0 2px; }
+  .center { text-align:center; } .muted { color:#d6c48a; font-size:13.5px; }
+  .app-row { display:grid; grid-template-columns:1.6fr .8fr .7fr .7fr .9fr; gap:8px; align-items:center; margin-bottom:8px; font-size:13.5px; }
+  .app-row input { padding:7px; font-size:13.5px; }
+  .bar-wrap { display:flex; align-items:flex-end; gap:10px; height:150px; padding-top:10px; }
+  .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; min-width:0; }
+  .bar { width:70%; background:linear-gradient(180deg,#fbbf24,#b45309); border-radius:6px 6px 0 0; min-height:4px; }
+  .bar-col .m { font-size:11px; color:#d6c48a; white-space:nowrap; }
+  .bar-col .v { font-size:11.5px; font-weight:700; }
+  .hist-row { display:flex; justify-content:space-between; padding:9px 2px; border-bottom:1px solid #3d320e; font-size:14px; }
+  .del { background:none; border:none; color:#b45309; cursor:pointer; font-size:15px; }
+  .note { font-size:12.5px; color:#a68d4b; text-align:center; margin-top:14px; line-height:1.5; }
+  .hidden { display:none; }
+  @media (max-width:560px){ .grid2{grid-template-columns:1fr} .app-row{grid-template-columns:1.4fr .7fr .6fr .6fr .8fr; font-size:12px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚡ Electricity Bill <span>Calculator</span></h1>
+  <p class="sub">Bangladesh residential (LT-A) bills — DESCO · DPDC · NESCO · BPDB · BREB<br>Slab-wise bill, prepaid recharge planning, appliance costs &amp; monthly history.</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('calc', this)">🧮 Bill Calculator</button>
+    <button class="tab" onclick="showTab('recharge', this)">💳 Recharge Planner</button>
+    <button class="tab" onclick="showTab('appliance', this)">🔌 Appliances</button>
+    <button class="tab" onclick="showTab('history', this)">📊 History</button>
+  </div>
+
+  <!-- ============ CALCULATOR ============ -->
+  <div id="tab-calc">
+    <div class="card">
+      <h3>Monthly Bill</h3>
+      <div class="grid2">
+        <div><label>Units used this month (kWh)</label><input id="units" type="number" min="0" value="220"></div>
+        <div><label>Sanctioned load (kW)</label><input id="kw" type="number" min="1" step="0.5" value="2"></div>
+        <div><label>Meter rent (৳ / month)</label><input id="rent" type="number" min="0" value="40"></div>
+        <div><label>Demand charge (৳ per kW)</label><input id="demandRate" type="number" min="0" value="42"></div>
+      </div>
+      <button class="main" onclick="calculate()">Calculate Bill</button>
+    </div>
+    <div class="card hidden" id="billResult">
+      <div class="center muted">Your total bill</div>
+      <div class="big" id="grandTotal"></div>
+      <div class="center muted" id="avgRate" style="margin-bottom:12px"></div>
+      <table>
+        <thead><tr><th>Slab</th><th>Units</th><th>Rate (৳)</th><th>Cost (৳)</th></tr></thead>
+        <tbody id="slabRows"></tbody>
+        <tbody id="extraRows"></tbody>
+      </table>
+      <button class="main" style="background:#574410;color:#fde68a" onclick="saveToHistory()">💾 Save this month to History</button>
+    </div>
+    <div class="card">
+      <h3>Tariff Slabs (BERC Residential LT-A)</h3>
+      <table>
+        <tr><th>Units</th><th style="text-align:right">Rate / unit</th></tr>
+        <tr><td>Lifeline — whole month ≤ 50 units</td><td>৳4.63</td></tr>
+        <tr><td>1 – 75</td><td>৳5.26</td></tr>
+        <tr><td>76 – 200</td><td>৳8.50</td></tr>
+        <tr><td>201 – 300</td><td>৳9.10</td></tr>
+        <tr><td>301 – 400</td><td>৳9.62</td></tr>
+        <tr><td>401 – 600</td><td>৳15.01</td></tr>
+        <tr><td>Above 600</td><td>৳17.35</td></tr>
+      </table>
+      <p class="muted" style="margin-top:10px">Plus demand charge ৳42/kW, meter rent, and 5% VAT on the subtotal.</p>
+    </div>
+  </div>
+
+  <!-- ============ RECHARGE PLANNER ============ -->
+  <div id="tab-recharge" class="hidden">
+    <div class="card">
+      <h3>Prepaid Recharge Planner</h3>
+      <div class="grid2">
+        <div><label>Recharge amount (৳)</label><input id="rcAmount" type="number" min="0" value="1000"></div>
+        <div><label>Your average use per day (units)</label><input id="rcDaily" type="number" min="0.1" step="0.1" value="7"></div>
+        <div><label>Sanctioned load (kW)</label><input id="rcKw" type="number" min="1" step="0.5" value="2"></div>
+        <div><label>Meter rent (৳ / month)</label><input id="rcRent" type="number" min="0" value="40"></div>
+      </div>
+      <button class="main" onclick="planRecharge()">Plan My Recharge</button>
+    </div>
+    <div class="card hidden" id="rcResult">
+      <div class="center muted">This recharge gives you about</div>
+      <div class="big" id="rcUnits"></div>
+      <div class="center" id="rcDays" style="font-size:18px;font-weight:700;color:#fde68a"></div>
+      <p class="muted center" id="rcNote" style="margin-top:10px"></p>
+    </div>
+  </div>
+
+  <!-- ============ APPLIANCES ============ -->
+  <div id="tab-appliance" class="hidden">
+    <div class="card">
+      <h3>Appliance Cost Estimator</h3>
+      <p class="muted" style="margin-bottom:12px">Set how many of each appliance you run and for how many hours a day — see the monthly units and the estimated bill.</p>
+      <div class="app-row" style="font-weight:700;color:#d6c48a"><span>Appliance</span><span>Watt</span><span>Qty</span><span>Hrs/day</span><span style="text-align:right">Units/mo</span></div>
+      <div id="appRows"></div>
+      <button class="main" onclick="calcAppliances()">Estimate My Bill</button>
+    </div>
+    <div class="card hidden" id="appResult">
+      <div class="center muted">Estimated monthly use</div>
+      <div class="big" id="appUnits"></div>
+      <div class="center" id="appBill" style="font-size:18px;font-weight:700;color:#fde68a"></div>
+      <p class="muted center" id="appTop" style="margin-top:10px"></p>
+    </div>
+  </div>
+
+  <!-- ============ HISTORY ============ -->
+  <div id="tab-history" class="hidden">
+    <div class="card">
+      <h3>Monthly History</h3>
+      <div id="histChart"></div>
+      <div id="histList" style="margin-top:14px"></div>
+      <p class="muted center" id="histStats" style="margin-top:12px"></p>
+    </div>
+  </div>
+
+  <p class="note">Rates follow the BERC residential tariff (June 2026 revision): lifeline ৳4.63 (month ≤ 50 units), then ৳5.26 / 8.50 / 9.10 / 9.62 / 15.01 / 17.35 per slab, demand charge ৳42/kW, 5% VAT. All charges are editable above — always check your own bill for the latest rates. Estimates only.</p>
+</div>
+
+<script>
+  const SLABS = [[75, 5.26], [200, 8.50], [300, 9.10], [400, 9.62], [600, 15.01], [Infinity, 17.35]];
+  const LIFE_RATE = 4.63, LIFE_MAX = 50, VAT = 0.05;
+  const money = n => '৳' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+  function energyCost(units) {
+    if (units <= 0) return { total: 0, rows: [] };
+    if (units <= LIFE_MAX) return { total: units * LIFE_RATE, rows: [{ label: 'Lifeline (0–50)', units, rate: LIFE_RATE, cost: units * LIFE_RATE }] };
+    const rows = []; let prev = 0, total = 0;
+    for (const [cap, rate] of SLABS) {
+      if (units <= prev) break;
+      const u = Math.min(units, cap) - prev;
+      rows.push({ label: (prev + 1) + '–' + (cap === Infinity ? '600+' : cap), units: u, rate, cost: u * rate });
+      total += u * rate; prev = cap;
+    }
+    return { total, rows };
+  }
+  function fullBill(units, kw, rent, demandRate) {
+    const e = energyCost(units);
+    const demand = demandRate * kw;
+    const subtotal = e.total + demand + rent;
+    const vat = subtotal * VAT;
+    return { rows: e.rows, energy: e.total, demand, rent, subtotal, vat, grand: subtotal + vat };
+  }
+  let lastBill = null, lastUnits = 0;
+
+  function calculate() {
+    const units = parseFloat(document.getElementById('units').value) || 0;
+    const kw = parseFloat(document.getElementById('kw').value) || 0;
+    const rent = parseFloat(document.getElementById('rent').value) || 0;
+    const dr = parseFloat(document.getElementById('demandRate').value) || 0;
+    const b = fullBill(units, kw, rent, dr);
+    lastBill = b; lastUnits = units;
+    document.getElementById('slabRows').innerHTML = b.rows.map(r =>
+      `<tr><td>${r.label}</td><td>${r.units}</td><td>${r.rate.toFixed(2)}</td><td>${r.cost.toFixed(2)}</td></tr>`).join('');
+    document.getElementById('extraRows').innerHTML = `
+      <tr><td colspan="3">Energy charge</td><td>${b.energy.toFixed(2)}</td></tr>
+      <tr><td colspan="3">Demand charge (${kw} kW × ৳${dr})</td><td>${b.demand.toFixed(2)}</td></tr>
+      <tr><td colspan="3">Meter rent</td><td>${b.rent.toFixed(2)}</td></tr>
+      <tr><td colspan="3">VAT (5%)</td><td>${b.vat.toFixed(2)}</td></tr>
+      <tr class="total-row"><td colspan="3">Total</td><td>${b.grand.toFixed(2)}</td></tr>`;
+    document.getElementById('grandTotal').textContent = money(Math.round(b.grand));
+    document.getElementById('avgRate').textContent = units > 0 ? `Average ৳${(b.grand / units).toFixed(2)} per unit · ${units} units` : '';
+    document.getElementById('billResult').classList.remove('hidden');
+  }
+
+  function unitsForBudget(budget) { // inverse of energyCost (stepped rates)
+    let units = 0, prev = 0;
+    for (const [cap, rate] of SLABS) {
+      const width = cap === Infinity ? Infinity : cap - prev;
+      const afford = budget / rate;
+      if (afford < width) { units += afford; return units; }
+      units += width; budget -= width * rate; prev = cap;
+    }
+    return units;
+  }
+  function planRecharge() {
+    const amount = parseFloat(document.getElementById('rcAmount').value) || 0;
+    const daily = parseFloat(document.getElementById('rcDaily').value) || 0;
+    const kw = parseFloat(document.getElementById('rcKw').value) || 0;
+    const rent = parseFloat(document.getElementById('rcRent').value) || 0;
+    const preVat = amount / (1 + VAT);
+    const energyBudget = Math.max(preVat - (42 * kw + rent), 0);
+    const units = unitsForBudget(energyBudget);
+    document.getElementById('rcUnits').textContent = '≈ ' + Math.floor(units) + ' units';
+    document.getElementById('rcDays').textContent = daily > 0 ? 'Enough for about ' + Math.max(Math.floor(units / daily), 0) + ' days at your current use' : '';
+    document.getElementById('rcNote').textContent = 'After monthly demand charge, meter rent and 5% VAT are deducted from the recharge. Real meter deductions can vary slightly.';
+    document.getElementById('rcResult').classList.remove('hidden');
+  }
+
+  const APPLIANCES = [
+    ['Ceiling fan', 75, 3, 10], ['LED bulb', 10, 5, 6], ['Television', 100, 1, 5],
+    ['Refrigerator', 150, 1, 24], ['Air conditioner (1.5 ton)', 1500, 1, 6],
+    ['Rice cooker', 1000, 1, 1], ['Washing machine', 500, 1, 1], ['Water pump', 750, 1, 1]
+  ];
+  const appRowsEl = document.getElementById('appRows');
+  appRowsEl.innerHTML = APPLIANCES.map((a, i) => `
+    <div class="app-row"><span>${a[0]}</span>
+    <input type="number" id="w${i}" value="${a[1]}" min="0">
+    <input type="number" id="q${i}" value="${a[2]}" min="0">
+    <input type="number" id="h${i}" value="${a[3]}" min="0" step="0.5">
+    <span style="text-align:right" id="u${i}">–</span></div>`).join('');
+
+  function calcAppliances() {
+    let totalUnits = 0; const per = [];
+    APPLIANCES.forEach((a, i) => {
+      const w = parseFloat(document.getElementById('w' + i).value) || 0;
+      const q = parseFloat(document.getElementById('q' + i).value) || 0;
+      const h = parseFloat(document.getElementById('h' + i).value) || 0;
+      const u = w * q * h * 30 / 1000;
+      per.push({ name: a[0], units: u });
+      totalUnits += u;
+      document.getElementById('u' + i).textContent = u ? u.toFixed(1) : '–';
+    });
+    const kw = parseFloat(document.getElementById('kw').value) || 2;
+    const rent = parseFloat(document.getElementById('rent').value) || 40;
+    const b = fullBill(Math.round(totalUnits), kw, rent, 42);
+    document.getElementById('appUnits').textContent = '≈ ' + Math.round(totalUnits) + ' units';
+    document.getElementById('appBill').textContent = 'Estimated bill: ' + money(Math.round(b.grand)) + ' / month';
+    const top = per.sort((x, y) => y.units - x.units)[0];
+    document.getElementById('appTop').textContent = top && top.units > 0 ? `Biggest consumer: ${top.name} — about ${Math.round(top.units)} units/month.` : '';
+    document.getElementById('appResult').classList.remove('hidden');
+  }
+
+  const HKEY = 'ebc-history-v1';
+  function getHistory() { try { return JSON.parse(localStorage.getItem(HKEY)) || []; } catch (e) { return []; } }
+  function saveToHistory() {
+    if (!lastBill) return;
+    const now = new Date();
+    const label = now.toLocaleString('en', { month: 'short' }) + ' ' + now.getFullYear();
+    const h = getHistory().filter(x => x.label !== label);
+    h.push({ label, units: lastUnits, bill: Math.round(lastBill.grand) });
+    try { localStorage.setItem(HKEY, JSON.stringify(h.slice(-12))); } catch (e) {}
+    renderHistory();
+    alert('Saved ' + label + ' to History — open the History tab to see your chart.');
+  }
+  function deleteHist(label) {
+    const h = getHistory().filter(x => x.label !== label);
+    try { localStorage.setItem(HKEY, JSON.stringify(h)); } catch (e) {}
+    renderHistory();
+  }
+  function renderHistory() {
+    const h = getHistory();
+    const chart = document.getElementById('histChart');
+    const list = document.getElementById('histList');
+    const stats = document.getElementById('histStats');
+    if (h.length === 0) {
+      chart.innerHTML = '<p class="muted center">No saved months yet. Calculate a bill and press "Save this month to History".</p>';
+      list.innerHTML = ''; stats.textContent = ''; return;
+    }
+    const max = Math.max(...h.map(x => x.bill));
+    chart.innerHTML = '<div class="bar-wrap">' + h.map(x =>
+      `<div class="bar-col"><span class="v">৳${x.bill.toLocaleString('en-IN')}</span><div class="bar" style="height:${Math.max(x.bill / max * 100, 4)}%"></div><span class="m">${x.label}</span></div>`).join('') + '</div>';
+    list.innerHTML = h.map(x =>
+      `<div class="hist-row"><span>${x.label} · ${x.units} units</span><span><b>${money(x.bill)}</b> <button class="del" onclick="deleteHist('${x.label}')">✕</button></span></div>`).join('');
+    const avg = h.reduce((s, x) => s + x.bill, 0) / h.length;
+    const top = h.reduce((a, b) => b.bill > a.bill ? b : a);
+    stats.textContent = `Average bill: ${money(Math.round(avg))} · Highest: ${top.label} (${money(top.bill)})`;
+  }
+
+  function showTab(name, btn) {
+    ['calc', 'recharge', 'appliance', 'history'].forEach(t => document.getElementById('tab-' + t).classList.toggle('hidden', t !== name));
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (name === 'history') renderHistory();
+  }
+  calculate();
+</script>
+</body>
+</html>
